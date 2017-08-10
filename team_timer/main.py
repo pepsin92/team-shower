@@ -109,7 +109,6 @@ class Main(QWidget):
         pass
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
     app = QApplication([])
 
     win = Main()
