@@ -1,9 +1,7 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
-from collections import namedtuple
 import logging
-import datetime
 import sys
 
 
@@ -17,8 +15,13 @@ class Team:
         self.text_color = text_color
         self.background = team_color
 
-teams = [Team('foo\nbarr', 'blue'),
-         Team('bar', 'black', 'lightgray')]
+teams = [Team('Team 1', team_color='#205088'),
+         Team('Team 2', team_color='black', text_color='lightgray'),
+         Team('Team 3', team_color='#25FF5D')]
+
+slots = [0, 1]
+
+# TODO: load from JSON file
 
 
 class TeamLabel(QLabel):
@@ -29,11 +32,32 @@ class TeamLabel(QLabel):
         self.setText(team.name)
 
 
+class TeamBox(QStackedWidget):
+    def __init__(self, starting=0):
+        super().__init__()
+        self.teams = [TeamLabel(team) for team in teams]
+        for team in self.teams:
+            self.addWidget(team)
+        self.current = starting
+        self.setCurrentIndex(self.current)
+
+    def tick(self):
+        self.current = (self.current + 1) % len(self.teams)
+        logging.debug('Setting team #%d', self.current)
+        self.setCurrentIndex(self.current)
+
+
 class TeamBlock(QHBoxLayout):
     def __init__(self):
         super().__init__()
-        for team in teams:
-            self.addWidget(TeamLabel(team))
+        self.slots = [TeamBox(starting=i) for i in slots]
+        for slot in self.slots:
+            self.addWidget(slot)
+
+    def tick(self):
+        widgets = [self.itemAt(i) for i in range(self.count())]
+        for slot in self.slots:
+            slot.tick()
 
 
 class StatusBar(QHBoxLayout):
@@ -70,20 +94,22 @@ class Main(QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.tick)
         self.timer.setInterval(TICK)
+        self.status_bar = None
+        self.team_bar = None
 
         self.init_ui()
 
     def init_ui(self):
         self.resize(1280, 720)
         self.setWindowTitle('Hello, LTT!')
-        team_bar = TeamBlock()
-        team_bar.stretch(3)
+        self.team_bar = TeamBlock()
+        self.team_bar.stretch(3)
 
         # Bottom status bar
         self.status_bar = StatusBar(stretch=1, button_bind=self.toggle_timer)
 
         vbox = QVBoxLayout()
-        vbox.addItem(team_bar)
+        vbox.addItem(self.team_bar)
         vbox.addItem(self.status_bar)
         self.setLayout(vbox)
 
@@ -105,13 +131,14 @@ class Main(QWidget):
         self.timer.start()
 
     def swap_teams(self):
-        # TODO: implement
-        pass
+        logging.info('Swapping teams')
+        self.team_bar.tick()
 
 if __name__ == '__main__':
+    # logging.basicConfig(level=logging.DEBUG)
     app = QApplication([])
 
-    win = Main()
-    win.showFullScreen()
+    window = Main()
+    window.show()
 
     sys.exit(app.exec_())
